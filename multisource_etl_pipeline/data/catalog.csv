@@ -1,0 +1,6 @@
+product_id,product_name,category,price,supplier,in_stock
+1,"Ноутбук Dell XPS 13",Электроника,1299.99,Dell Inc,true
+2,"Смартфон iPhone 14",Электроника,999.99,Apple,true
+3,"Наушники Sony WH-1000XM4",Аудио,349.99,Sony,false
+4,"Книга "Clean Code"",Книги,39.99,Prentice Hall,true
+5,"Футболка хлопковая",Одежда,19.99,Textile Co,true

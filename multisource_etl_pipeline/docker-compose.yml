@@ -1,0 +1,172 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    hostname: ${POSTGRES_HOST:-postgres}
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-airflow_db,orders_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SOURCE_POSTGRES_DATABASE: ${SOURCE_POSTGRES_DATABASE}
+      SOURCE_POSTGRES_USER: ${SOURCE_POSTGRES_USER}
+      SOURCE_POSTGRES_PASSWORD: ${SOURCE_POSTGRES_PASSWORD}
+      SOURCE_POSTGRES_TABLE: ${SOURCE_POSTGRES_TABLE}
+      SOURCE_POSTGRES_WATERMARK_TABLE: ${SOURCE_POSTGRES_WATERMARK_TABLE}
+      SOURCE_POSTGRES_EXTRA: ${SOURCE_POSTGRES_EXTRA}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init/postgres-init/:/docker-entrypoint-initdb.d/:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      retries: 5
+      timeout: 10s
+
+  pgadmin:
+    image: dpage/pgadmin4:9.11
+    ports:
+      - 5050:80
+    environment:
+      # Required by pgAdmin
+      PGADMIN_DEFAULT_EMAIL: demo@example.com
+      PGADMIN_DEFAULT_PASSWORD: secret
+      # Don't require the user to login
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      # Don't require a "master" password after logging in
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+
+  # mongo:
+  #   image: mongo:8
+  #   hostname: ${MONGO_HOST:-mongo}
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+  #     MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin}
+  #     MONGO_USERNAME: ${MONGO_USER:-admin}
+  #     MONGO_PASSWORD: ${MONGO_PASSWORD:-admin}
+  #     MONGO_DATABASE: ${MONGO_DATABASE:-local}
+  #     MONGO_COLLECTION: ${MONGO_COLLECTION:-payments}
+  #   volumes:
+  #     - mongo_data:/data/db
+  #     - ./init/mongo-init/:/docker-entrypoint-initdb.d/:ro
+  #   ports:
+  #     - "${MONGO_PORT:-27017}:27017"
+  #   healthcheck:
+  #     test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 5
+
+  # mongo-express:
+  #   image: mongo-express:1.0.2-20-alpine3.19
+  #   depends_on:
+  #     - mongo
+  #   environment:
+  #     - ME_CONFIG_MONGODB_SERVER=${MONGO_HOST:-mongo}
+  #     - ME_CONFIG_MONGODB_PORT=${MONGO_PORT:-27017}
+  #     - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_INITDB_ROOT_USERNAME:-admin}
+  #     - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_INITDB_ROOT_PASSWORD:-admin}
+  #     # доступ к web-интерфейсу
+  #     - ME_CONFIG_BASICAUTH_USERNAME=admin
+  #     - ME_CONFIG_BASICAUTH_PASSWORD=admin
+  #   ports:
+  #     - '5051:8081'
+
+  # ftp:
+  #   image: stilliard/pure-ftpd:hardened
+  #   hostname: ${FTP_HOST:-ftp}
+  #   ports:
+  #     - "${FTP_PORT:-21}:21"
+  #     - "30000-30009:30000-30009"
+  #   environment:
+  #     FTP_USER_NAME: ${FTP_USER:-user}
+  #     FTP_USER_PASS: ${FTP_PASSWORD:-user}
+  #     FTP_USER_HOME: /home/ftpuser
+  #   volumes:
+  #     - ftp_data:/home/ftpuser
+  #     - ./data/sample.csv:/home/ftpuser/sample.csv
+
+
+  airflow:
+    image: apache/airflow:2.11.0
+    depends_on:
+      - postgres
+      # - mongo
+    environment:
+      # Airflow core
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER:-airflow}:${AIRFLOW_POSTGRES_PASSWORD:-airflow}@postgres/${AIRFLOW_POSTGRES_DATABASE:-airflow_db}
+      AIRFLOW__WEBSERVER__SECRET_KEY: test-secret-key
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      _PIP_ADDITIONAL_REQUIREMENTS: '-r /opt/airflow/requirements.txt'
+
+      # Переменные для инициализации Connections
+      # PostgreSQL Source
+      SOURCE_POSTGRES_HOST: ${SOURCE_POSTGRES_HOST}
+      SOURCE_POSTGRES_PORT: ${SOURCE_POSTGRES_PORT}
+      SOURCE_POSTGRES_DATABASE: ${SOURCE_POSTGRES_DATABASE}
+      SOURCE_POSTGRES_USER: ${SOURCE_POSTGRES_USER}
+      SOURCE_POSTGRES_PASSWORD: ${SOURCE_POSTGRES_PASSWORD}
+      SOURCE_POSTGRES_EXTRA: ${SOURCE_POSTGRES_EXTRA}
+
+      # MongoDB Source
+      SOURCE_MONGO_HOST: ${SOURCE_MONGO_HOST}
+      SOURCE_MONGO_PORT: ${SOURCE_MONGO_PORT}
+      SOURCE_MONGO_DATABASE: ${SOURCE_MONGO_DATABASE}
+      SOURCE_MONGO_USER: ${SOURCE_MONGO_USER}
+      SOURCE_MONGO_PASSWORD: ${SOURCE_MONGO_PASSWORD}
+      SOURCE_MONGO_EXTRA: ${SOURCE_MONGO_EXTRA}
+
+      # FTP Server Source
+      SOURCE_FTP_HOST: ${SOURCE_FTP_HOST}
+      SOURCE_FTP_PORT: ${SOURCE_FTP_PORT}
+      SOURCE_FTP_USER: ${SOURCE_FTP_USER}
+      SOURCE_FTP_PASSWORD: ${SOURCE_FTP_PASSWORD}
+      SOURCE_FTP_PATH: ${SOURCE_FTP_PATH}
+      SOURCE_FTP_FILENAME: ${SOURCE_FTP_FILENAME}
+      SOURCE_FTP_EXTRA: ${SOURCE_FTP_EXTRA}
+
+      # External API
+      SOURCE_API_URL: ${SOURCE_API_URL}
+      SOURCE_API_KEY: ${SOURCE_API_KEY}
+      SOURCE_API_EXTRA: ${SOURCE_API_EXTRA}
+ 
+      # Environment
+      AIRFLOW_ENV: ${AIRFLOW_ENV:-dev}
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./config:/opt/airflow/config
+      - ./data:/opt/airflow/data
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./scripts:/opt/airflow/scripts
+      - ./requirements.txt:/opt/airflow/requirements.txt:ro
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    entrypoint: /bin/bash
+    command: 
+      - -c
+      - |
+        #pip install pandas numpy requests psycopg2-binary sqlalchemy python-dotenv
+        pip install --no-cache-dir -r /opt/airflow/requirements.txt 2>/dev/null
+        airflow db migrate || airflow db init
+        python /opt/airflow/config/init_connections.py
+        airflow users create \
+          --username ${AIRFLOW_USER:-admin} \
+          --password ${AIRFLOW_PASSWORD:-admin} \
+          --role Admin \
+          --email admin@example.com \
+          --firstname Admin \
+          --lastname Admin
+        airflow webserver & 
+        airflow scheduler 
+
+volumes:
+  postgres_data:
+  mongo_data:
+  ftp_data:
