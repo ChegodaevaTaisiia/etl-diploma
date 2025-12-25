@@ -55,17 +55,17 @@ EOSQL
                 DO \$\$
                 BEGIN
                     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$db_user') THEN
-                        CREATE USER $db_user WITH PASSWORD '$db_pass';
+                        CREATE USER "$db_user" WITH PASSWORD '$db_pass';
                     END IF;
                 END
                 \$\$;
-                GRANT CONNECT ON DATABASE "$db_name" TO $db_user;
-                GRANT USAGE ON SCHEMA public TO $db_user;
-								ALTER DATABASE "$db_name" OWNER TO $db_user;
-                GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $db_user;
-                GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $db_user;
-								ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO $db_user;
-								ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES  ON SEQUENCES TO $db_user;
+                GRANT CONNECT ON DATABASE "$db_name" TO "$db_user";
+                GRANT USAGE ON SCHEMA public TO "$db_user";
+								ALTER DATABASE "$db_name" OWNER TO "$db_user";
+                GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "$db_user";
+                GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "$db_user";
+								ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO "$db_user";
+								ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES  ON SEQUENCES TO "$db_user";
 EOSQL
         fi
     done
