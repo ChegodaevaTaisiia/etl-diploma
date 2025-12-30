@@ -4,7 +4,13 @@
 
 ### Цель проекта
 
-Разработать ETL-pipeline на базе Apache Airflow для автоматизированного сбора, обработки и визуализации данных бизнес-процессов. Система должна ежедневно (в 9:00) собирать данные из различных источников, трансформировать их и загружать в аналитическую БД и хранилище данных (Data Warehouse) для последующей визуализации на дашборде.
+Разработать ETL-pipeline на базе Apache Airflow для автоматизированного сбора, обработки и визуализации данных бизнес-процессов. Система должна ежедневно (в 9:00)собирать данные из различных источников, трансформировать их и загружать в аналитическую БД и хранилище данных (Data Warehouse) для последующей визуализации на дашборде.
+
+#### Ключевые требования
+
+1. Хранилище данных (Data Warehouse) должно использовать стратегию **Slowly Changing Dimensions (SCD) Type 2** для отслеживания исторических изменений в таблицах измерений (dimensions). Это позволит сохранять полную историю изменений атрибутов и анализировать данные в контексте их исторического состояния.
+
+2. **Безопасность подключений**: Все подключения к источникам данных должны осуществляться через **Airflow Connections**, а аутентификационные данные (логины, пароли, токены) должны передаваться через **переменные окружения (.env файл)**. Жесткое кодирование учетных данных в коде запрещено.
 
 ---
 
@@ -198,7 +204,7 @@ CREATE TABLE daily_business_analytics (
 
 **Пример изменения:**
 
-```
+```text
 Клиент ID=123 переехал из Москвы в Санкт-Петербург 2025-06-15
 
 До изменения:
@@ -315,6 +321,156 @@ CREATE TABLE dim_time (
 - Временной диапазон: вчерашний день (00:00 - 23:59)
 - Обработка ошибок с повторными попытками
 - Логирование всех операций
+
+---
+
+## 6.6 Использование Airflow Connections и переменных окружения
+
+### Концепция безопасного хранения учетных данных
+
+**ВАЖНО**: Никогда не храните пароли, токены и другие sensitive данные в коде!
+
+**Правильный подход:**
+
+1. Учетные данные → `.env` файл (не коммитится в Git)
+2. `.env` → переменные окружения Docker
+3. Переменные окружения → Airflow Connections
+4. Код → использует Airflow Connections
+
+### Структура .env файла
+
+```bash
+# .env - файл с переменными окружения (добавить в .gitignore!)
+
+# PostgreSQL Source Database
+POSTGRES_SOURCE_HOST=postgres-source
+POSTGRES_SOURCE_PORT=5432
+POSTGRES_SOURCE_DB=production_db
+POSTGRES_SOURCE_USER=postgres
+POSTGRES_SOURCE_PASSWORD=your_secure_password_here
+
+# PostgreSQL Analytics & DWH
+POSTGRES_ANALYTICS_HOST=postgres-analytics
+POSTGRES_ANALYTICS_PORT=5432
+POSTGRES_ANALYTICS_DB=analytics_db
+POSTGRES_ANALYTICS_USER=analytics
+POSTGRES_ANALYTICS_PASSWORD=your_analytics_password
+
+# MongoDB
+MONGO_HOST=mongodb
+MONGO_PORT=27017
+MONGO_DB=feedback_db
+MONGO_USER=mongo
+MONGO_PASSWORD=your_mongo_password
+
+# FTP Server
+FTP_HOST=ftp-server
+FTP_PORT=21
+FTP_USER=ftpuser
+FTP_PASSWORD=your_ftp_password
+
+# REST API
+API_BASE_URL=https://api.example.com
+API_AUTH_TOKEN=your_api_token_here
+
+# Airflow
+AIRFLOW_UID=50000
+AIRFLOW_FERNET_KEY=your_fernet_key
+```
+
+### Настройка Airflow Connections
+
+**Способ 1: Через переменные окружения (рекомендуется)**
+
+```bash
+# В docker-compose.yml или .env добавить:
+AIRFLOW_CONN_POSTGRES_SOURCE=postgresql://postgres:password@postgres-source:5432/production_db
+AIRFLOW_CONN_MONGODB=mongodb://mongo:password@mongodb:27017/feedback_db
+AIRFLOW_CONN_POSTGRES_ANALYTICS=postgresql://analytics:password@postgres-analytics:5432/analytics_db
+```
+
+**Способ 2: Через Web UI (для разработки)**
+
+1. Откройте `http://localhost:8080`
+2. Admin → Connections → Add Connection
+3. Conn Id: `postgres_source`, Conn Type: `Postgres`
+
+**Способ 3: Через CLI**
+
+```bash
+docker-compose exec airflow-webserver airflow connections add \
+  'postgres_source' \
+  --conn-type 'postgres' \
+  --conn-host "${POSTGRES_SOURCE_HOST}" \
+  --conn-login "${POSTGRES_SOURCE_USER}" \
+  --conn-password "${POSTGRES_SOURCE_PASSWORD}"
+```
+
+### Использование Connections в коде
+
+```python
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+from airflow.providers.mongo.hooks.mongo import MongoHook
+
+def extract_from_postgres(**context):
+    # ПРАВИЛЬНО: Используем Airflow Connection
+    postgres_hook = PostgresHook(postgres_conn_id='postgres_source')
+    conn = postgres_hook.get_conn()
+    
+    # Или получить DataFrame напрямую
+    df = postgres_hook.get_pandas_df("SELECT * FROM orders")
+    return df
+
+def extract_from_mongodb(**context):
+    # ПРАВИЛЬНО: Используем Airflow Connection
+    mongo_hook = MongoHook(conn_id='mongodb')
+    collection = mongo_hook.get_collection('customer_feedback', mongo_db='feedback_db')
+    data = list(collection.find({}))
+    return data
+```
+
+### Обновленные классы Extractors
+
+```python
+# extractors/postgres_extractor.py
+from airflow.providers.postgres.hooks.postgres import PostgresHook
+
+class PostgresExtractor(BaseExtractor):
+    def __init__(self, conn_id: str):
+        self.conn_id = conn_id
+        self.hook = None
+    
+    def connect(self):
+        # Используем Airflow Hook вместо прямого подключения
+        self.hook = PostgresHook(postgres_conn_id=self.conn_id)
+        self.connection = self.hook.get_conn()
+        logger.info(f"Connected via Airflow connection: {self.conn_id}")
+    
+    def extract(self, start_date, end_date):
+        query = "SELECT * FROM orders WHERE order_date >= %s AND order_date < %s"
+        df = self.hook.get_pandas_df(query, parameters=(start_date, end_date))
+        return df.to_dict('records')
+```
+
+### Проверочный список безопасности
+
+**✅ Обязательно:**
+
+- [ ] Файл `.env` создан с переменными
+- [ ] `.env` добавлен в `.gitignore`
+- [ ] Созданы Airflow Connections для всех источников
+- [ ] Код использует Hooks (`PostgresHook`, `MongoHook`)
+- [ ] Нет хардкод паролей в коде
+
+**❌ ЗАПРЕЩЕНО:**
+
+```python
+# ❌ Хардкод паролей
+config = {'password': 'my_password_123'}
+
+# ✅ ПРАВИЛЬНО
+hook = PostgresHook(postgres_conn_id='postgres_source')
+```
 
 ---
 
@@ -598,6 +754,62 @@ def validate_loaded_data(analytics_date, conn):
 
 ## 10. Docker Compose для инфраструктуры
 
+### ВАЖНО: Файловая структура проекта
+
+```
+project/
+├── .env                    # Переменные окружения (НЕ коммитить!)
+├── .env.example           # Пример для документации
+├── .gitignore             # Обязательно добавить .env
+├── docker-compose.yml
+├── dags/
+├── extractors/
+├── transformers/
+├── loaders/
+└── init-scripts/
+```
+
+### .env.example
+
+```bash
+# PostgreSQL Source
+POSTGRES_SOURCE_USER=postgres
+POSTGRES_SOURCE_PASSWORD=change_me
+POSTGRES_SOURCE_DB=production_db
+
+# PostgreSQL Analytics
+POSTGRES_ANALYTICS_USER=analytics
+POSTGRES_ANALYTICS_PASSWORD=change_me
+POSTGRES_ANALYTICS_DB=analytics_db
+
+# MongoDB
+MONGO_USER=mongo
+MONGO_PASSWORD=change_me
+MONGO_DB=feedback_db
+
+# Airflow Connections
+AIRFLOW_CONN_POSTGRES_SOURCE=postgresql://postgres:change_me@postgres-source:5432/production_db
+AIRFLOW_CONN_POSTGRES_ANALYTICS=postgresql://analytics:change_me@postgres-analytics:5432/analytics_db
+AIRFLOW_CONN_MONGODB=mongodb://mongo:change_me@mongodb:27017/feedback_db
+```
+
+### .gitignore
+
+```gitignore
+# КРИТИЧЕСКИ ВАЖНО!
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Airflow
+logs/
+airflow.db
+```
+
+### docker-compose.yml (с .env)
+
 ```yaml
 version: '3.8'
 
@@ -619,9 +831,15 @@ services:
     image: apache/airflow:2.8.1-python3.10
     depends_on:
       - postgres-airflow
+    env_file:
+      - .env  # Подключаем переменные окружения
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      # Connections через переменные окружения из .env
+      AIRFLOW_CONN_POSTGRES_SOURCE: ${AIRFLOW_CONN_POSTGRES_SOURCE}
+      AIRFLOW_CONN_POSTGRES_ANALYTICS: ${AIRFLOW_CONN_POSTGRES_ANALYTICS}
+      AIRFLOW_CONN_MONGODB: ${AIRFLOW_CONN_MONGODB}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -636,9 +854,14 @@ services:
     image: apache/airflow:2.8.1-python3.11
     depends_on:
       - postgres-airflow
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+      AIRFLOW_CONN_POSTGRES_SOURCE: ${AIRFLOW_CONN_POSTGRES_SOURCE}
+      AIRFLOW_CONN_POSTGRES_ANALYTICS: ${AIRFLOW_CONN_POSTGRES_ANALYTICS}
+      AIRFLOW_CONN_MONGODB: ${AIRFLOW_CONN_MONGODB}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -649,10 +872,12 @@ services:
   # Source PostgreSQL
   postgres-source:
     image: postgres:15
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: production_db
+      POSTGRES_USER: ${POSTGRES_SOURCE_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_SOURCE_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_SOURCE_DB}
     volumes:
       - postgres-source-data:/var/lib/postgresql/data
       - ./init-scripts/init-source-db.sql:/docker-entrypoint-initdb.d/init.sql
@@ -662,10 +887,12 @@ services:
   # Analytics PostgreSQL & DWH
   postgres-analytics:
     image: postgres:15
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: analytics
-      POSTGRES_PASSWORD: analytics
-      POSTGRES_DB: analytics_db
+      POSTGRES_USER: ${POSTGRES_ANALYTICS_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_ANALYTICS_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_ANALYTICS_DB}
     volumes:
       - postgres-analytics-data:/var/lib/postgresql/data
       - ./init-scripts/init-analytics-db.sql:/docker-entrypoint-initdb.d/init.sql
@@ -675,22 +902,23 @@ services:
   # MongoDB
   mongodb:
     image: mongo:7
+    env_file:
+      - .env
     environment:
-      MONGO_INITDB_ROOT_USERNAME: mongo
-      MONGO_INITDB_ROOT_PASSWORD: mongo
-      MONGO_INITDB_DATABASE: feedback_db
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
     volumes:
       - mongodb-data:/data/db
-      - ./init-scripts/init-mongo.js:/docker-entrypoint-initdb.d/init.js
     ports:
       - "27017:27017"
-
+ 
   # FTP Server
   ftp-server:
     image: fauria/vsftpd
     environment:
-      FTP_USER: ftpuser
-      FTP_PASS: ftppass
+      FTP_USER: ${FTP_USER}
+      FTP_PASS: ${FTP_PASSWORD}
     volumes:
       - ./data/ftp:/home/vsftpd/ftpuser
     ports:
@@ -736,8 +964,15 @@ networks:
 ### Запуск
 
 ```bash
-# Запуск всей инфраструктуры
+# 1. Создание .env
+cp .env.example .env
+# Отредактируйте .env с реальными паролями!
+
+# 2. Запуск всей инфраструктуры
 docker-compose up -d
+
+# 3. Проверка Connections
+docker-compose exec airflow-webserver airflow connections list
 
 # Просмотр логов
 docker-compose logs -f airflow-scheduler
@@ -1252,7 +1487,7 @@ class WarehouseLoader:
                 """, (customer['customer_id'], customer['first_name'],
                       customer['last_name'], customer['email'], customer['city'],
                       customer.get('customer_segment', 'Regular')))
-                logger.info(f"Создан новый клиент: {customer['customer_id']}")
+                logger.info(f"✅ Создан новый клиент: {customer['customer_id']}")
             else:
                 # Шаг 3: Проверяем изменения отслеживаемых атрибутов
                 current_key, current_email, current_city, current_segment = current
@@ -1284,10 +1519,10 @@ class WarehouseLoader:
                           customer['last_name'], customer['email'], customer['city'],
                           customer.get('customer_segment', 'Regular')))
                     
-                    logger.info(f"SCD Type 2: Новая версия клиента {customer['customer_id']}")
+                    logger.info(f"📝 SCD Type 2: Новая версия клиента {customer['customer_id']}")
                     logger.debug(f"   Старый key={current_key} закрыт, создан новый key")
                 else:
-                    logger.debug(f"   Клиент {customer['customer_id']} без изменений")
+                    logger.debug(f"⏭️  Клиент {customer['customer_id']} без изменений")
         
         self.conn.commit()
         logger.info(f"Обработано {len(df_customers)} клиентов с SCD Type 2")
@@ -1342,8 +1577,7 @@ class WarehouseLoader:
             logger.warning(f"Версия клиента {customer_id} на {as_of_date} не найдена")
         
         return result
-
-
+    
     def load_fact_orders(self, df_facts):
         """Загрузка фактов заказов"""
         # Обогащение surrogate keys
@@ -1675,77 +1909,88 @@ task_csv
 
 ## Критерии оценки дипломной работы
 
-### 1. Полнота реализации (40 баллов)
+### 1. Полнота реализации (35 баллов)
 
-- Реализация всех 3+ источников данных (10 баллов)
-- Корректная работа Extract-Transform-Load (15 баллов)
-- Настроенный Data Warehouse (10 баллов)
-- Работающий дашборд (5 баллов)
+- ✅ Реализация всех 3+ источников данных (8 баллов)
+- ✅ Корректная работа Extract-Transform-Load (10 баллов)
+- ✅ Настроенный Data Warehouse с **SCD Type 2** (12 баллов)
+  - Правильная реализация версионирования (effective_date, expiration_date, is_current)
+  - Корректное закрытие старых версий
+  - Создание новых версий при изменениях
+  - Привязка фактов к правильным версиям измерений
+- ✅ Работающий дашборд (5 баллов)
 
-### 2. Качество кода (30 баллов)
+### 2. Безопасность и управление подключениями (15 баллов)
 
-- Архитектура и структура проекта (10 баллов)
-- Обработка ошибок и логирование (10 баллов)
-- Документация и комментарии (10 баллов)
+- ✅ Использование `.env` файла для учетных данных (5 баллов)
+- ✅ `.env` добавлен в `.gitignore`, нет хардкод паролей в коде (3 балла)
+- ✅ Настроены **Airflow Connections** для всех источников (5 баллов)
+- ✅ Код использует Airflow Hooks (`PostgresHook`, `MongoHook`) (2 балла)
 
-### 3. Настройка Airflow (20 баллов)
+### 3. Качество кода (25 баллов)
 
-- Корректная структура DAG (10 баллов)
-- Зависимости и расписание задач (5 баллов)
-- Мониторинг и алерты (5 баллов)
+- ✅ Архитектура и структура проекта (10 баллов)
+- ✅ Обработка ошибок и логирование (8 баллов)
+- ✅ Документация и комментарии (7 баллов)
 
-### 4. Документация (10 баллов)
+### 4. Настройка Airflow (15 баллов)
 
-- README с инструкциями по запуску (5 баллов)
-- Описание архитектуры и решений (5 баллов)
+- ✅ Корректная структура DAG (8 баллов)
+- ✅ Зависимости и расписание задач (4 балла)
+- ✅ Мониторинг и алерты (3 балла)
+
+### 5. Документация (10 баллов)
+
+- ✅ README с инструкциями по запуску и настройке .env (5 баллов)
+- ✅ Описание архитектуры и решений, включая обоснование использования SCD Type 2 (5 баллов)
 
 ---
 
 ## Рекомендации по выполнению
 
-### Этап 1: Подготовка
+### Этап 1: Подготовка (1-2 дня)
 
 1. Выбор предметной области
 2. Проектирование архитектуры
 3. Настройка Docker окружения
 4. Инициализация баз данных
 
-### Этап 2: Разработка Extract
+### Этап 2: Разработка Extract (2-3 дня)
 
 1. Создание базовых классов Extractors
 2. Реализация экстракторов для каждого источника
 3. Тестирование извлечения данных
 4. Генерация тестовых данных
 
-### Этап 3: Разработка Transform
+### Этап 3: Разработка Transform (2-3 дня)
 
 1. Реализация валидаторов
 2. Реализация очистки данных
 3. Создание трансформеров
 4. Тестирование обработки
 
-### Этап 4: Разработка Load
+### Этап 4: Разработка Load (2-3 дня)
 
 1. Создание структуры DWH
 2. Реализация загрузчиков
 3. Тестирование загрузки
 4. Валидация данных
 
-### Этап 5: Airflow DAG
+### Этап 5: Airflow DAG (2-3 дня)
 
 1. Создание основного DAG
 2. Настройка зависимостей задач
 3. Тестирование пайплайна
 4. Настройка расписания
 
-### Этап 6: Визуализация
+### Этап 6: Визуализация (1-2 дня)
 
 1. Настройка Grafana/Metabase
 2. Создание дашборда
 3. Настройка обновления данных
 4. Финальное тестирование
 
-### Этап 7: Документация
+### Этап 7: Документация (1-2 дня)
 
 1. Написание README
 2. Документирование API
