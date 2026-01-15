@@ -131,22 +131,22 @@ services:
       - airflow-network
 
   # Simple FTP server
-  # ftp:
-  #   image: stilliard/pure-ftpd:hardened
-  #   hostname: ${FTP_HOST:-ftp}
-  #   ports:
-  #     - "${FTP_PORT:-21}:21"
-  #     - "30000-30009:30000-30009"
-  #   environment:
-  #     FTP_USER_NAME: ${FTP_USER:-user}
-  #     FTP_USER_PASS: ${FTP_PASSWORD:-user}
-  #     FTP_USER_HOME: /home/ftpuser
-  #   volumes:
-  #     - ftp_data:/home/ftpuser
-  #     - ./data/csv:/home/ftpuser
-  #   restart: always
-  #   networks:
-  #     - airflow-network
+  ftp:
+    image: stilliard/pure-ftpd:hardened
+    hostname: ${FTP_HOST:-ftp}
+    ports:
+      - "${FTP_PORT:-21}:21"
+      - "30000-30009:30000-30009"
+    environment:
+      FTP_USER_NAME: ${FTP_USER:-user}
+      FTP_USER_PASS: ${FTP_PASSWORD:-user}
+      FTP_USER_HOME: /home/ftpuser
+    volumes:
+      - ftp_data:/home/ftpuser
+      - ./data/csv:/home/ftpuser
+    restart: always
+    networks:
+      - airflow-network
 
   # Airflow Service
   airflow:
