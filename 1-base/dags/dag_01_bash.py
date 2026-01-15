@@ -1,5 +1,5 @@
 """
-DAG 1: Основы работы с BashOperator
+DAG: Основы работы с BashOperator
 
 Цель:
 -----

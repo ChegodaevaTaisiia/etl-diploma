@@ -1,5 +1,5 @@
 """
-DAG 6: Передача данных между задачами через XCom
+DAG: Передача данных между задачами через XCom
 
 Описание:
 ---------
@@ -248,26 +248,26 @@ def combine_results(**context):
     ti = context['task_instance']
     
     # Получаем данные из разных задач
-    logger.info("Получение данных из XCom...")
+    logger.info("  Получение данных из XCom...")
     
     # Данные из generate_data
     raw_data = ti.xcom_pull(task_ids='generate_data')
-    logger.info("✓ Получены исходные данные")
+    logger.info("  Получены исходные данные")
     
     # Результаты обработки
     processed_result = ti.xcom_pull(task_ids='process_data')
-    logger.info("✓ Получены результаты обработки")
+    logger.info("  Получены результаты обработки")
     
     # Статистика
     statistics = ti.xcom_pull(task_ids='calculate_stats')
-    logger.info("✓ Получена статистика")
+    logger.info("  Получена статистика")
     
     # Дополнительные данные (с конкретным ключом)
     additional_data = ti.xcom_pull(task_ids='generate_additional_data', key='additional_data')
     data_type = ti.xcom_pull(task_ids='generate_additional_data', key='data_type')
     
     if additional_data:
-        logger.info("✓ Получены дополнительные данные")
+        logger.info("  Получены дополнительные данные")
         logger.info(f"  Тип: {data_type}")
     
     # Объединяем все результаты

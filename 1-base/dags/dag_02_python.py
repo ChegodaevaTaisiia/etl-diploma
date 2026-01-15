@@ -1,5 +1,5 @@
 """
-DAG 2: Основы работы с PythonOperator
+DAG: Основы работы с PythonOperator
 
 Цель:
 -----
@@ -72,13 +72,13 @@ def greet_user(**context):
     execution_date = context['execution_date']
     
     # Выводим информацию в лог
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info("ПРИВЕТСТВИЕ ОТ APACHE AIRFLOW!")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info(f"DAG ID: {dag_id}")
     logger.info(f"Task ID: {task_id}")
     logger.info(f"Дата выполнения: {execution_date}")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     
     # Функция может возвращать значение
     # Оно автоматически сохранится в XCom (об этом в dag_04)
@@ -108,11 +108,11 @@ def calculate_sum(a, b, **context):
     result = a + b
     
     # Логируем результат
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info("ВЫЧИСЛЕНИЕ")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info(f"  Вычисляем: {a} + {b} = {result}")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     
     # Возвращаем результат (он сохранится в XCom)
     return result
@@ -145,15 +145,15 @@ def get_execution_info(**context):
     dag_run = context['dag_run']          # Объект DagRun
     
     # Выводим информацию
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info("ИНФОРМАЦИЯ О ВЫПОЛНЕНИИ")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info(f"  Дата выполнения (ds): {ds}")
     logger.info(f"  Дата без дефисов (ds_nodash): {ds_nodash}")
     logger.info(f"  Timestamp (ts): {ts}")
     logger.info(f"  Run ID: {run_id}")
     logger.info(f"  Тип запуска: {dag_run.run_type}")  # manual, scheduled, etc.
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     
     # Возвращаем словарь с информацией
     return {
@@ -186,17 +186,16 @@ def analyze_data(**context):
     maximum = max(data)
     
     # Выводим результаты
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info("АНАЛИЗ ДАННЫХ")
-    logger.info("=" * 50)
-    logger.info(f"Количество элементов: {len(data)}")
-    logger.info(f"Данные: {data}")
-    logger.info("-" * 60)
-    logger.info(f"Сумма: {total}")
-    logger.info(f"Среднее: {average:.2f}")
-    logger.info(f"Минимум: {minimum}")
-    logger.info(f"Максимум: {maximum}")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
+    logger.info(f"  Количество элементов: {len(data)}")
+    logger.info(f"  Данные: {data}")
+    logger.info(f"  Сумма: {total}")
+    logger.info(f"  Среднее: {average:.2f}")
+    logger.info(f"  Минимум: {minimum}")
+    logger.info(f"  Максимум: {maximum}")
+    logger.info("-" * 50)
     
     # Возвращаем результаты
     return {
@@ -225,13 +224,13 @@ def demonstrate_op_kwargs(person_name, age, city="Unknown", **context):
     """
     logger = logging.getLogger(__name__)
     
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info("ДЕМОНСТРАЦИЯ OP_KWARGS")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     logger.info(f"  Имя: {person_name}")
     logger.info(f"  Возраст: {age}")
     logger.info(f"  Город: {city}")
-    logger.info("=" * 50)
+    logger.info("-" * 50)
     
     return f"Обработан пользователь: {person_name}"
 
@@ -260,7 +259,6 @@ start_task = DummyOperator(
     dag=dag,
 )
 
-
 # Задача 1: Приветствие (функция с контекстом)
 greet_task = PythonOperator(
     task_id='greet_user',
@@ -268,7 +266,6 @@ greet_task = PythonOperator(
     provide_context=True,             # Передать **context в функцию
     dag=dag,
 )
-
 
 # Задача 2: Вычисление (функция с параметрами через op_args)
 calculate_task = PythonOperator(
@@ -279,7 +276,6 @@ calculate_task = PythonOperator(
     dag=dag,
 )
 
-
 # Задача 3: Информация о выполнении
 execution_info_task = PythonOperator(
     task_id='get_execution_info',
@@ -288,7 +284,6 @@ execution_info_task = PythonOperator(
     dag=dag,
 )
 
-
 # Задача 4: Анализ данных
 analyze_task = PythonOperator(
     task_id='analyze_data',
@@ -296,7 +291,6 @@ analyze_task = PythonOperator(
     provide_context=True,
     dag=dag,
 )
-
 
 # Задача 5: Демонстрация op_kwargs (именованные параметры)
 kwargs_task = PythonOperator(
@@ -310,7 +304,6 @@ kwargs_task = PythonOperator(
     provide_context=True,
     dag=dag,
 )
-
 
 # Конец DAG
 end_task = DummyOperator(
@@ -425,12 +418,12 @@ start_task >> greet_task >> calculate_task >> execution_info_task >> \
 Частые ошибки:
 --------------
 
-❌ python_callable=greet_user()  # ОШИБКА: со скобками!
-✅ python_callable=greet_user    # ПРАВИЛЬНО: без скобок
+python_callable=greet_user()  # ОШИБКА: со скобками!
+python_callable=greet_user    # ПРАВИЛЬНО: без скобок
 
-❌ logger = logging.getLogger('my_logger')  # Работает, но не рекомендуется
-✅ logger = logging.getLogger(__name__)     # Правильный подход
+logger = logging.getLogger('my_logger')  # Работает, но не рекомендуется
+logger = logging.getLogger(__name__)     # Правильный подход
 
-❌ print("Hello")                # Работает, но не попадёт в логи Airflow
-✅ logger.info("Hello")          # Правильно: попадёт в логи
+print("Hello")                # Работает, но не попадёт в логи Airflow
+logger.info("Hello")          # Правильно: попадёт в логи
 """
