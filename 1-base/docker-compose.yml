@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # СУБД Postgres
   postgres:
     image: postgres:15
     environment:
@@ -19,6 +20,7 @@ services:
       retries: 5
       start_period: 30s
 
+  # web-интерфейс для управления Postgres (опционально)
   pgadmin:
     image: dpage/pgadmin4:9.11
     ports:
@@ -32,6 +34,7 @@ services:
       # Don't require a "master" password after logging in
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
 
+  # Apache Airflow
   airflow:
     image: apache/airflow:2.11.0
     depends_on:
@@ -54,8 +57,13 @@ services:
     command:
       - -c
       - |
+        # Установка дополнительных библиотек
         pip install pandas numpy requests psycopg2-binary sqlalchemy python-dotenv 
+        
+        # Инициализация БД Airflow
         airflow db migrate || airflow db init
+        
+        # Создание пользователя-администратора
         airflow users create \
           --username ${AIRFLOW_USER:-admin} \
           --password ${AIRFLOW_PASSWORD:-admin} \
@@ -63,6 +71,8 @@ services:
           --email admin@example.com \
           --firstname Admin \
           --lastname Admin
+        
+        # Запуск веб-сервера и scheduler в одном контейнере
         airflow webserver & 
         airflow scheduler 
 
