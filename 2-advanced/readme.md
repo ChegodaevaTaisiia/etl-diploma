@@ -464,16 +464,22 @@ else:
 **1. Connection: `weather_api_conn`**
 
 - Type: HTTP
-- Host: `api.openweathermap.org`
+- Host: `www.weatherbit.io`
 - Schema: `https`
-- Extra: `{"appid": "YOUR_API_KEY"}`
+- Extra: `{"key": "YOUR_API_KEY"}`
 
-Получить бесплатный API key: https://openweathermap.org/api
+Получить бесплатный API key: https://www.weatherbit.io/
+
+Endpoint:
+
+- текущая погода -  `v2.0/current`
+- предсказание погоды - `v2.0/forecast/daily`
 
 **2. Variables:**
-- `weather_city`: название города (например, "Moscow")
-- `weather_units`: единицы измерения ("metric" или "imperial")
-- `weather_lang`: язык ответа ("ru", "en")
+
+- `city`: название города (например, "Moscow")
+- `units`: единицы измерения (`M` - [DEFAULT] Metric (Celsius, m/s, mm), `S` - Scientific (Kelvin, m/s, mm), `I` - Fahrenheit (F, mph, in))
+- `lang`: язык ответа (`en` - [DEFAULT], `ru`)
 
 **3. WeatherHook** (`plugins/custom_hooks/weather_hook.py`):
 
@@ -483,23 +489,22 @@ class WeatherHook(BaseHook):
         """Инициализация Hook"""
         pass
     
-    def get_current_weather(self, city, units='metric', lang='en'):
+    def get_current_weather(self, city, units='M', lang='en'):
         """
         Получить текущую погоду для города.
         
-        Endpoint: /data/2.5/weather
-        Params: q (city), appid, units, lang
+        Endpoint: v2.0/current
         
         Returns:
             dict: Данные о погоде
         """
         pass
     
-    def get_forecast(self, city, units='metric', lang='en'):
+    def get_forecast(self, city, units='M', lang='en'):
         """
         Получить прогноз погоды на 5 дней.
         
-        Endpoint: /data/2.5/forecast
+        Endpoint: v2.0/forecast/daily
         
         Returns:
             dict: Прогноз погоды
@@ -704,17 +709,6 @@ def execute(self, context):
     os.rename(self.output_path + '.tmp', self.output_path)
 ```
 
-### 4. Тестирование
-
-```python
-# Тестирование Hook
-def test_weather_hook():
-    hook = WeatherHook('weather_test_conn')
-    result = hook.get_current_weather('London')
-    assert 'temp' in result
-    assert 'humidity' in result
-```
-
 ---
 
 ## Дополнительные ресурсы
@@ -738,7 +732,7 @@ def test_weather_hook():
 - `[ ]` Изучил код Operator в `plugins/custom_operators/`
 - `[ ]` Выполнил упражнения 1-5
 - `[ ]` Начал выполнение домашнего задания
-- `[ ]` Получил API key для OpenWeatherMap
+- `[ ]` Получил API key для сервиса погоды
 - `[ ]` Создал WeatherHook
 - `[ ]` Создал WeatherToFileOperator
 - `[ ]` Создал DAG для погоды
