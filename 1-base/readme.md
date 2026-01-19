@@ -743,8 +743,8 @@ bye_task = BashOperator(task_id='print_bye', ...)
 
 После освоения Темы 1 переходите к:
 
-- **Тема 2:** Дополнительные инструменты и возможности Apache Airflow (Operators, Connectors, Hooks)
-- **Тема 3:** Извлечение данных из различных источников (Postgres, MongoDB, API, CSV)
+- **Тема 2:** [Дополнительные инструменты и возможности Apache Airflow (Operators, Connectors, Hooks)](/2-advanced/)
+- **Тема 3:** [Извлечение данных из различных источников (Postgres, MongoDB, API, CSV)](/3-extract/)
 - **Тема 4:** Трансформация и валидация данных
 - **Тема 5:** Загрузка данных и создание витрин
 
