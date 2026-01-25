@@ -1,0 +1,22 @@
+transaction_id,customer_name,product_name,quantity,price,sale_date,payment_method,email
+T001,John Smith,laptop pro,1,1299.99,2025-01-01,credit_card,john@example.com
+T002,Jane Doe,WIRELESS MOUSE,2,29.99,2025-01-02,cash,jane@example.com
+T002,Jane Doe,WIRELESS MOUSE,2,29.99,2025-01-02,cash,jane@example.com
+T003,,Coffee Maker,1,89.99,2025-01-03,debit_card,alice@
+T004,Bob Wilson,headphones,3,-15.00,2025-01-04,credit_card,bob@example.com
+T005,Alice Johnson,Standing Desk,1,449.99,,paypal,alice.j@example.com
+T006,Charlie Brown,usb cable,5,9.99,2025-01-06,cash,
+T007,  Diana Prince  ,Notebook,10,5.99,2025-01-07,credit_card,diana@example.com
+T008,Eve Anderson,water bottle,2,12.99,2025-01-08,debit_card,eve@
+T009,Frank Miller,KEYBOARD,1,89.99,2025-01-09,cash,frank@example.com
+T010,Grace Lee,Monitor 4K,1,599.99,2025-01-10,credit_card,GRACE@EXAMPLE.COM
+T011,Henry Kim,phone stand,3,0,2025-01-11,paypal,henry@example.com
+T012,,Desk Organizer,2,24.99,2025-01-12,cash,guest@example.com
+T013,Isabel Garcia,BACKPACK,1,79.99,2026-02-15,credit_card,isabel@example.com
+T014,Jack Taylor,webcam,2,149.99,2025-01-14,debit_card,bad_email
+T015,Kate Wilson,Laptop Pro,1,1299.99,2025-01-15,credit_card,kate@example.com
+T016,Leo Martinez,wireless mouse,4,29.99,2025-01-16,,leo@example.com
+T017,Maria Rodriguez,Coffee Maker,1,89.99,2025-01-17,cash,maria@example.com
+T018,Nina Petrov,headphones,2,64.99,2025-01-18,paypal,  nina@example.com  
+T019,Oscar Chen,standing desk,1,-449.99,2025-01-19,credit_card,oscar@example.com
+T020,Paula Wang,USB Cable,10,9.99,2025-01-20,debit_card,paula@example.com

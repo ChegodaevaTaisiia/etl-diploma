@@ -1,0 +1,17 @@
+product_id,product_name,price,category,stock,supplier_id
+101,Laptop Pro,1299.99,Electronics,15,S001
+102,Wireless Mouse,29.99,Electronics,50,S002
+102,Wireless Mouse,29.99,Electronics,50,S002
+103,Coffee Maker,,Home,20,S003
+104,Headphones,-50.00,электроника,35,S004
+105,Standing Desk,449.99,,8,S005
+106,USB Cable,9.99,Electronics,100,S006
+107,DESK LAMP,34.99,Home,25,S007
+108,  Notebook  ,5.99,Office,200,S008
+109,Water Bottle,0,Sports,75,S009
+110,Keyboard,89.99,Electronics,30,
+111,Monitor 4K,599.99,electronics,12,S001
+112,Phone Stand,19.99,ELECTRONICS,60,S002
+113,Desk Organizer,,Office,40,S003
+114,Backpack,79.99,Sports,-10,S004
+115,Webcam,149.99,Electronics,18,S005

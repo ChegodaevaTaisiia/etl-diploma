@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - внутренняя БД для Airflow
+  postgres:
+    image: postgres:15
+    hostname: postgres
+    environment:
+      POSTGRES_DB: airflow_db
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow", "-d", "airflow_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - airflow_network
+
+  # Airflow
+  airflow:
+    image: apache/airflow:2.11.0
+    hostname: airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Airflow configuration
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow_db
+      AIRFLOW__WEBSERVER__SECRET_KEY: lesson4-secret-key
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      _PIP_ADDITIONAL_REQUIREMENTS: '-r /opt/airflow/requirements.txt'
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./plugins:/opt/airflow/plugins
+      - ./data:/opt/airflow/data
+      - airflow_logs:/opt/airflow/logs
+      # Файл с зависимостями Python (если запуск без сборки образа)
+      - ./requirements.txt:/opt/airflow/requirements.txt:ro
+    ports:
+      - "8080:8080"
+    networks:
+      - airflow_network
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        # Установка зависимостей
+        pip install --no-cache-dir -r /opt/airflow/requirements.txt 2>/dev/null || true
+
+        # Инициализация БД Airflow
+        airflow db migrate || airflow db init
+        
+        # Создание пользователя, если не существует
+        if ! airflow users list 2>/dev/null | grep -q \"\admin\"; then
+          echo "Creating Airflow user: admin"
+          airflow users create \
+            --username admin \
+            --password admin \
+            --role Admin \
+            --email admin@example.com \
+            --firstname Admin \
+            --lastname Admin
+        else
+          echo "Airflow user: admin already exists"
+        fi
+        
+        # Запуск сервисов Airflow
+        airflow webserver & 
+        airflow scheduler
+
+volumes:
+  postgres_data:
+    name: lesson3_postgres_data
+  mongo_data:
+    name: lesson3_mongo_data
+  airflow_logs:
+    name: lesson3_airflow_logs
+
+networks:
+  airflow_network:
+    driver: bridge

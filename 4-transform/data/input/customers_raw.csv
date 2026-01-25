@@ -1,0 +1,22 @@
+customer_id,email,full_name,age,city,gender,phone,registration_date
+1,alice@example.com,Alice Smith,28,Moscow,female,+7-915-123-45-67,2024-01-15
+2,bob@example.com,Bob Johnson,35,SPB,М,89161234567,2024-02-20
+2,bob@example.com,Bob Johnson,35,SPB,М,89161234567,2024-02-20
+3,charlie@,Charlie Brown,,Moscow,male,invalid,2024-03-10
+4,david@example.com,David Lee,150,Kazan,м,+7(916)765-43-21,2024-04-05
+5,emma@example.com,Emma Davis,29,,female,+79167654321,2024-05-12
+6,frank@example.com,Frank Miller,-5,Moscow,Male,123,2024-06-18
+7,GRACE@EXAMPLE.COM,Grace Taylor,42,Kazan,female,+7 916 888 99 00,2024-07-22
+8,  henry@example.com  ,Henry Anderson,30,SPB,male,9169998877,2024-08-14
+9,isabel@example.com,Isabel Garcia,25,Moscow,female,+79151112233,2024-09-05
+10,jack@,Jack Wilson,,,М,invalid_phone,2024-10-11
+11,kate@example.com,Kate Brown,33,SPB,ж,89162223344,2024-11-20
+12,leo@example.com,Leo Martinez,180,Kazan,male,+79163334455,2024-12-08
+13,maria@example.com,Maria Rodriguez,27,Moscow,Ж,+7-916-444-55-66,2025-01-03
+14,nina@example.com,Nina Petrov,31,,female,89164445566,2025-01-10
+15,oscar@example.com,Oscar Kim,29,SPB,male,+79165556677,2025-01-12
+16,paula@,Paula Chen,,,Female,bad_phone,2025-01-14
+17,quinn@example.com,Quinn Lee,38,Moscow,м,+7(916)666-77-88,2025-01-16
+18,rachel@example.com,Rachel Wang,26,Kazan,female,9166667788,2025-01-18
+19,sam@example.com,Sam Taylor,200,SPB,male,+79167778899,2025-01-20
+20,tina@example.com,Tina Anderson,32,Moscow,Ж,+7 916 777 88 99,2025-01-22
