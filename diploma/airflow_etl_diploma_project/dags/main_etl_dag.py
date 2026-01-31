@@ -19,6 +19,39 @@ from airflow.operators.empty import EmptyOperator
 
 LOG = logging.getLogger(__name__)
 
+
+def _sanitize_record(r):
+    """Один словарь: Timestamp/datetime -> строка для XCom (JSON)."""
+    if not isinstance(r, dict):
+        return r
+    out = {}
+    for k, v in r.items():
+        if pd.isna(v):
+            out[k] = None
+        elif isinstance(v, pd.Timestamp):
+            out[k] = v.isoformat()
+        elif hasattr(v, 'isoformat') and callable(getattr(v, 'isoformat')):
+            out[k] = v.isoformat()
+        else:
+            out[k] = v
+    return out
+
+
+def _df_to_xcom_records(df):
+    """Конвертирует DataFrame в список словарей, пригодных для XCom (JSON): Timestamp/datetime -> строка."""
+    if df is None or df.empty:
+        return []
+    records = df.to_dict('records')
+    return [_sanitize_record(r) for r in records]
+
+
+def _list_to_xcom_records(records):
+    """Список словарей: приводит к JSON-безопасному виду (Timestamp -> строка)."""
+    if not records:
+        return []
+    return [_sanitize_record(r) for r in records]
+
+
 # --------------------------------------------------
 # ОПРЕДЕЛЕНИЕ КОНВЕЙЕРА (DAG)
 # --------------------------------------------------
@@ -26,6 +59,7 @@ LOG = logging.getLogger(__name__)
 default_args = {
     'owner': 'data_engineer',
     'depends_on_past': False,
+    'email': [],  # Укажите email для алертов при падении: ['your@email.com']
     'email_on_failure': True,
     'email_on_retry': False,
     'retries': 2,
@@ -86,9 +120,9 @@ def extract_from_postgres(**context):
         )
 
     return {
-        'orders': orders_df.to_dict('records'),
-        'customers': customers_df.to_dict('records') if not customers_df.empty else [],
-        'order_items': order_items_df.to_dict('records') if not order_items_df.empty else [],
+        'orders': _df_to_xcom_records(orders_df),
+        'customers': _df_to_xcom_records(customers_df) if not customers_df.empty else [],
+        'order_items': _df_to_xcom_records(order_items_df) if not order_items_df.empty else [],
         'count_orders': len(orders_df),
         'count_customers': len(customers_df),
         'count_order_items': len(order_items_df),
@@ -111,7 +145,7 @@ def extract_from_mongo(**context):
     )
     if feedback_df.empty:
         return {'feedback': [], 'count': 0}
-    return {'feedback': feedback_df.to_dict('records'), 'count': len(feedback_df)}
+    return {'feedback': _df_to_xcom_records(feedback_df), 'count': len(feedback_df)}
 
 
 def extract_from_csv(**context):
@@ -130,7 +164,7 @@ def extract_from_csv(**context):
     combined = pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
     if not combined.empty:
         combined = combined.drop_duplicates(subset=['product_id'], keep='last')
-    return {'products': combined.to_dict('records') if not combined.empty else [], 'count': len(combined)}
+    return {'products': _df_to_xcom_records(combined) if not combined.empty else [], 'count': len(combined)}
 
 
 def extract_from_api(**context):
@@ -155,7 +189,7 @@ def extract_from_ftp(**context):
             return {'logs': [], 'count': 0, 'files_found': []}
         remote_path = f"/{files[0]}"
         logs = extractor.extract(remote_path, file_type='csv')
-        return {'logs': logs or [], 'count': len(logs or []), 'files_found': files}
+        return {'logs': _list_to_xcom_records(logs or []), 'count': len(logs or []), 'files_found': files}
     except Exception as e:
         LOG.warning("FTP extract skipped: %s", e)
         return {'logs': [], 'count': 0, 'files_found': []}
@@ -217,11 +251,11 @@ def transform_data(**context):
         order_items_df['total_price'] = order_items_df['unit_price'] * order_items_df['quantity']
 
     return {
-        'orders': orders_df.to_dict('records') if not orders_df.empty else [],
-        'customers': customers_df.to_dict('records') if not customers_df.empty else [],
-        'order_items': order_items_df.to_dict('records') if not order_items_df.empty else [],
-        'products': products_df.to_dict('records') if not products_df.empty else [],
-        'feedback': feedback_df.to_dict('records') if not feedback_df.empty else [],
+        'orders': _df_to_xcom_records(orders_df) if not orders_df.empty else [],
+        'customers': _df_to_xcom_records(customers_df) if not customers_df.empty else [],
+        'order_items': _df_to_xcom_records(order_items_df) if not order_items_df.empty else [],
+        'products': _df_to_xcom_records(products_df) if not products_df.empty else [],
+        'feedback': _df_to_xcom_records(feedback_df) if not feedback_df.empty else [],
     }
 
 

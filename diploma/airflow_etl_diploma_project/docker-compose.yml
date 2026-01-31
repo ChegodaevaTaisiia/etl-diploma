@@ -252,19 +252,19 @@ services:
     networks:
       - airflow-network
 
-  # Grafana for visualization
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "${GF_PORT:-3000}:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
-    volumes:
-      - grafana_data:/var/lib/grafana
-    restart: always
-    networks:
-      - airflow-network
+  # Grafana for visualization (опционально — раскомментируйте при необходимости)
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   ports:
+  #     - "${GF_PORT:-3000}:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+  #     - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #   restart: always
+  #   networks:
+  #     - airflow-network
 
 volumes:
   postgres_airflow_data:
@@ -273,7 +273,7 @@ volumes:
   mongo_data:
   ftp_data:
   airflow_logs:
-  grafana_data:
+  # grafana_data:
 
 networks:
   airflow-network:

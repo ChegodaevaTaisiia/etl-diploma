@@ -25,20 +25,29 @@ class SCDType2Handler:
     - expiration_date: дата окончания (9999-12-31 для активной)
     - is_current: флаг текущей версии (TRUE/FALSE)
     """
-    def __init__(self, conn_id: str, table_name: str, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        conn_id: str,
+        table_name: str,
+        logger: Optional[logging.Logger] = None,
+        surrogate_key: Optional[str] = None,
+    ):
         """
         Args:
             conn_id: ID подключения Airflow к БД (PostgresHook)
             table_name: Название таблицы измерения (например, 'dim_customers')
             logger: Логгер (опционально)
+            surrogate_key: Имя колонки surrogate key в БД (например, 'customer_key', 'product_key').
+                           Если не задано — выводится из table_name.
         """
         self.conn_id = conn_id
         self.table_name = table_name
         self.logger = logger or logging.getLogger(self.__class__.__name__)
-    
-        # Определяем название surrogate key из названия таблицы
-        # dim_customers -> customer_key
-        self.surrogate_key = table_name.replace('dim_', '') + '_key'
+        if surrogate_key is not None:
+            self.surrogate_key = surrogate_key
+        else:
+            name = table_name.replace('dim_', '')
+            self.surrogate_key = (name[:-1] if name.endswith('s') else name) + '_key'
         
         self._hook = PostgresHook(postgres_conn_id=conn_id) if PostgresHook else None
         self.logger.info(f"SCD Type 2 Handler initialized for table: {table_name}")

@@ -61,7 +61,9 @@ class DWHLoader:
         df = df[dim_cols].drop_duplicates(subset=['customer_id'], keep='last')
 
         tracked = tracked_attributes or ['city', 'country', 'email', 'phone']
-        handler = SCDType2Handler(self.dwh_conn_id, 'dim_customers', self.logger)
+        handler = SCDType2Handler(
+            self.dwh_conn_id, 'dim_customers', self.logger, surrogate_key='customer_key'
+        )
         return handler.process_dimension(
             natural_key='customer_id',
             new_data=df,
@@ -90,7 +92,9 @@ class DWHLoader:
         df = df[dim_cols].drop_duplicates(subset=['product_id'], keep='last')
 
         tracked = tracked_attributes or ['product_name', 'category', 'price']
-        handler = SCDType2Handler(self.dwh_conn_id, 'dim_products', self.logger)
+        handler = SCDType2Handler(
+            self.dwh_conn_id, 'dim_products', self.logger, surrogate_key='product_key'
+        )
         return handler.process_dimension(
             natural_key='product_id',
             new_data=df,
