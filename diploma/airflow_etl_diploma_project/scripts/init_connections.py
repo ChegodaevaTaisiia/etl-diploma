@@ -86,13 +86,12 @@ def setup_all_connections():
 
     # MongoDB
     if os.getenv('MONGO_HOST'):
-        mongo_uri = f"mongodb://{os.getenv('MONGO_USER')}:{os.getenv('MONGO_PASSWORD')}@{os.getenv('MONGO_HOST')}:{os.getenv('MONGO_PORT')}"
         create_connection(
             conn_id='mongo_source',
             conn_type='mongo',
-            host=os.getenv('MONGO_HOST', 'mongodb'),
-            schema=os.getenv('MONGO_DB', 'feedback_db'),
-            login=os.getenv('MONGO_USER', 'mongo_user'),
+            host=os.getenv('MONGO_HOST', 'mongo'),
+            schema=os.getenv('MONGO_DATABASE', os.getenv('MONGO_DB', 'feedback_db')),
+            login=os.getenv('MONGO_USER', 'admin'),
             password=os.getenv('MONGO_PASSWORD'),
             port=int(os.getenv('MONGO_PORT', 27017)),
             extra=json.dumps({"authSource": os.getenv('MONGO_AUTH_SOURCE', 'admin')})

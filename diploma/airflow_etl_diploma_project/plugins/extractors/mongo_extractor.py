@@ -88,26 +88,34 @@ class MongoExtractor(BaseExtractor):
         self,
         collection: str,
         date_field: str,
-        start_date: datetime,
-        end_date: Optional[datetime] = None
+        start_date,
+        end_date=None
     ) -> pd.DataFrame:
         """
         Извлечение данных по дате.
         Args:
             collection: Название коллекции
             date_field: Поле с датой
-            start_date: Начальная дата (включительно)
-            end_date: Конечная дата (не включительно)
+            start_date: Начальная дата (включительно), str или datetime
+            end_date: Конечная дата (не включительно), str или datetime
         Returns:
             DataFrame с данными за период
         """
-        query = {date_field: {"$gte": start_date}}
-        if end_date:
-            query[date_field]["$lt"] = end_date
-        
+        if isinstance(start_date, str):
+            start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        if isinstance(start_date, datetime) and start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=None)
+        if end_date is not None:
+            if isinstance(end_date, str):
+                end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            if isinstance(end_date, datetime) and end_date.tzinfo is None:
+                end_date = end_date.replace(tzinfo=None)
+            query = {date_field: {"$gte": start_date, "$lt": end_date}}
+        else:
+            query = {date_field: {"$gte": start_date}}
+
         self.logger.info(
             f"Date-based extract from {collection}: "
-            f"{start_date} to {end_date if end_date else datetime.now().strftime('%Y-%m-%d')}"
+            f"{start_date} to {end_date if end_date else 'now'}"
         )
-
         return self.extract(collection=collection, query=query)

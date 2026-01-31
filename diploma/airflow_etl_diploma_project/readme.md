@@ -67,15 +67,22 @@ docker compose up -d
 
 ### 4. Настройка Airflow Connections
 
+Подключения создаются автоматически при старте контейнера Airflow (скрипт `scripts/init_connections.py`). При необходимости вручную:
+
 ```bash
-docker compose exec -i airflow python /opt/airflow/scripts/setup_connections.py
+docker compose exec airflow python /opt/airflow/scripts/init_connections.py
 ```
 
-### 5. Запуск DAG
+### 5. Генерация тестовых данных (опционально)
 
-1. Откройте Airflow UI: http://localhost:8080
-2. Включите DAG `main_etl_pipeline`
-3. DAG будет автоматически запускаться каждый день в 9:00
+Перед первым запуском ETL можно сгенерировать тестовые данные DAG'ом `generate_test_data` (запуск в 8:00 или вручную).
+
+### 6. Запуск ETL DAG
+
+1. Откройте Airflow UI: http://localhost:8080 (логин/пароль из `.env`: по умолчанию admin/admin).
+2. Включите DAG **`main_etl`** (переключатель ON).
+3. При необходимости нажмите «Trigger DAG» для ручного запуска.
+4. DAG будет автоматически запускаться каждый день в **9:00**.
 
 ---
 

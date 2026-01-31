@@ -1,10 +1,16 @@
 """
 Обработчик SCD Type 2 для измерений Data Warehouse.
+Использует Airflow PostgresHook для безопасного подключения (без хардкода паролей).
 """
 import pandas as pd
 from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
 import logging
+
+try:
+    from airflow.providers.postgres.hooks.postgres import PostgresHook
+except ImportError:
+    PostgresHook = None
 
 
 class SCDType2Handler:
@@ -22,7 +28,7 @@ class SCDType2Handler:
     def __init__(self, conn_id: str, table_name: str, logger: Optional[logging.Logger] = None):
         """
         Args:
-            conn_id: ID подключения к БД
+            conn_id: ID подключения Airflow к БД (PostgresHook)
             table_name: Название таблицы измерения (например, 'dim_customers')
             logger: Логгер (опционально)
         """
@@ -34,7 +40,14 @@ class SCDType2Handler:
         # dim_customers -> customer_key
         self.surrogate_key = table_name.replace('dim_', '') + '_key'
         
+        self._hook = PostgresHook(postgres_conn_id=conn_id) if PostgresHook else None
         self.logger.info(f"SCD Type 2 Handler initialized for table: {table_name}")
+
+    def _get_conn(self):
+        """Получение соединения через PostgresHook (без хардкода паролей)."""
+        if self._hook:
+            return self._hook.get_conn()
+        raise RuntimeError("PostgresHook not available. Install apache-airflow-providers-postgres.")
 
     def process_dimension(
         self,
@@ -59,7 +72,8 @@ class SCDType2Handler:
         Returns:
             Статистика обработки: {'inserted': N, 'updated': M, 'unchanged': K}
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         stats = {'inserted': 0, 'updated': 0, 'unchanged': 0}
 
         try:
@@ -101,7 +115,7 @@ class SCDType2Handler:
                         self.logger.debug(f"No changes for {natural_key}={natural_key_value}")
             
             # Коммит всех изменений
-            self.conn.commit()
+            conn.commit()
             
             self.logger.info(
                 f"SCD Type 2 processing completed: "
@@ -112,12 +126,13 @@ class SCDType2Handler:
 
         except Exception as e:
             # Откатываем изменения при ошибке
-            self.conn.rollback()
+            conn.rollback()
             self.logger.error(f"SCD Type 2 processing failed: {e}")
             raise
             
         finally:
             cursor.close()
+            conn.close()
 
     def _get_current_version(
         self, 
@@ -134,8 +149,9 @@ class SCDType2Handler:
         Returns:
             Словарь с данными текущей версии или None если записи нет
         """
+        tbl = self.table_name
         query = f"""
-        SELECT * FROM {table_name}
+        SELECT * FROM {tbl}
         WHERE {natural_key} = %s AND is_current = TRUE
         LIMIT 1
         """
@@ -223,11 +239,26 @@ class SCDType2Handler:
         columns = [col for col in data.index if col != self.surrogate_key]
         columns.extend(['effective_date', 'expiration_date', 'is_current'])
         
-        # Значения для вставки
-        values = [data[col] if col in data.index else None for col in columns[:-3]]
+        # Значения для вставки: NaN/None -> None, иначе psycopg2 падает на numpy NaN
+        raw = [data[col] if col in data.index else None for col in columns[:-3]]
+        values = []
+        for v in raw:
+            if v is None:
+                values.append(None)
+            elif pd.isna(v):
+                values.append(None)
+            elif hasattr(v, 'item') and not isinstance(v, (str, date)):  # numpy scalar -> Python
+                try:
+                    values.append(int(v))
+                except (TypeError, ValueError):
+                    try:
+                        values.append(float(v))
+                    except (TypeError, ValueError):
+                        values.append(v)
+            else:
+                values.append(v)
         values.extend([effective_date, date(9999, 12, 31), True])
         
-        # Использование параметризованного запроса
         placeholders = ', '.join(['%s'] * len(columns))
         columns_str = ', '.join(columns)
         
@@ -255,7 +286,8 @@ class SCDType2Handler:
         Returns:
             Surrogate key или None если версия не найдена
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         try:
             # Использование параметризованного запроса
@@ -281,3 +313,4 @@ class SCDType2Handler:
                 
         finally:
             cursor.close()
+            conn.close()

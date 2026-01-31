@@ -1,0 +1,12 @@
+diploma/airflow_etl_diploma_project/Dockerfile.airflow
+diploma/airflow_etl_diploma_project/dags/generate_test_data.py
+diploma/airflow_etl_diploma_project/dags/main_etl_dag.py
+diploma/airflow_etl_diploma_project/docker-compose.yml
+diploma/airflow_etl_diploma_project/init/init_analytics_db.sql
+diploma/airflow_etl_diploma_project/plugins/extractors/mongo_extractor.py
+diploma/airflow_etl_diploma_project/plugins/loaders/scd_type2_handler.py
+diploma/airflow_etl_diploma_project/plugins/transformers/data_normilizer.py
+diploma/airflow_etl_diploma_project/plugins/transformers/data_quality.py
+diploma/airflow_etl_diploma_project/plugins/validators/data_validator.py
+diploma/airflow_etl_diploma_project/readme.md
+diploma/airflow_etl_diploma_project/scripts/init_connections.py

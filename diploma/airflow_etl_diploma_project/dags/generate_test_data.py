@@ -9,6 +9,7 @@ DAG для генерации тестовых данных.
 Запуск: вручную через UI или ежедневно в 8:00 (перед основным ETL в 9:00)
 """
 from datetime import datetime, timedelta
+import os
 from airflow.decorators import dag, task
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.providers.mongo.hooks.mongo import MongoHook
@@ -257,9 +258,9 @@ def generate_test_data_dag():
             
             if not delivered_orders:
                 logger.warning("No delivered orders found for feedback generation")
-                return {'generated': 0}
+                return {'generated': 0, 'total_delivered': 0}
             
-            # Подключение к MongoDB
+            # Подключение к MongoDB (проверьте Connection mongo_source в Airflow)
             mongo_hook = MongoHook(mongo_conn_id='mongo_source')
             client = mongo_hook.get_conn()
             db = client['feedback_db']
@@ -402,8 +403,9 @@ def generate_test_data_dag():
             
             df = pd.DataFrame(products)
             
-            # Сохранение в CSV
+            # Сохранение в CSV (создаём папку, если нет)
             output_dir = '/opt/airflow/data/csv'
+            os.makedirs(output_dir, exist_ok=True)
             filepath = f'{output_dir}/products_{date_str}.csv'
             
             df.to_csv(filepath, index=False, encoding='utf-8')
@@ -486,8 +488,9 @@ def generate_test_data_dag():
             
             df = pd.DataFrame(delivery_logs)
             
-            # Сохранение в CSV
+            # Сохранение в CSV (создаём папку, если нет)
             output_dir = '/opt/airflow/data/ftp'
+            os.makedirs(output_dir, exist_ok=True)
             filepath = f'{output_dir}/delivery_logs_{date_str}.csv'
             
             df.to_csv(filepath, index=False, encoding='utf-8')
@@ -514,9 +517,14 @@ def generate_test_data_dag():
         delivery_info: dict
     ) -> str:
         """
-        Сводка по сгенерированным данным.
+        Сводка по сгенерированным данным. Не падает, если какой-то из предыдущих задач вернул None.
         """
         logger = logging.getLogger(__name__)
+        
+        def safe(d: dict, key: str, default='—'):
+            if d is None:
+                return default
+            return d.get(key, default)
         
         summary = f"""
         --------------------------------------------------
@@ -524,24 +532,24 @@ def generate_test_data_dag():
         --------------------------------------------------
         
         PostgreSQL (postgres_source):
-           • Клиенты:          {customers_info['generated']} новых
-           • Заказы:           {orders_info['generated']} заказов
-           • Дата заказов:     {orders_info['date']}
+           • Клиенты:          {safe(customers_info, 'generated', 0)} новых
+           • Заказы:           {safe(orders_info, 'generated', 0)} заказов
+           • Дата заказов:     {safe(orders_info, 'date', '—')}
         
         MongoDB (feedback_db):
-           • Отзывы:           {feedback_info['generated']} отзывов
-           • Доставленных:     {feedback_info.get('total_delivered', 0)} заказов
+           • Отзывы:           {safe(feedback_info, 'generated', 0)} отзывов
+           • Доставленных:     {safe(feedback_info, 'total_delivered', 0)} заказов
         
         CSV Files:
-           • Продукты:         {products_info['generated']} позиций
-           • Файл:             {products_info['filepath']}
-           • Логи доставки:    {delivery_info['generated']} записей
-           • Файл:             {delivery_info['filepath']}
+           • Продукты:         {safe(products_info, 'generated', 0)} позиций
+           • Файл:             {safe(products_info, 'filepath', '—')}
+           • Логи доставки:    {safe(delivery_info, 'generated', 0)} записей
+           • Файл:             {safe(delivery_info, 'filepath', '—')}
         
         --------------------------------------------------
-        ГЕНЕРАЦИЯ ЗАВЕРШЕНА УСПЕШНО
+        ГЕНЕРАЦИЯ ЗАВЕРШЕНА
         --------------------------------------------------
-        Теперь можно запустить основной DAG
+        Теперь можно запустить основной DAG (main_etl)
         """
         
         logger.info(summary)

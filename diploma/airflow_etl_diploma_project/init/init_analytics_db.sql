@@ -85,11 +85,32 @@ CREATE TABLE IF NOT EXISTS data_quality_metrics (
 CREATE INDEX IF NOT EXISTS idx_dq_metrics_run_date ON data_quality_metrics(run_date);
 CREATE INDEX IF NOT EXISTS idx_dq_metrics_source ON data_quality_metrics(source_name);
 
+-- Таблица логов ETL-процессов (для представления etl_summary)
+CREATE TABLE IF NOT EXISTS etl_process_logs (
+    id SERIAL PRIMARY KEY,
+    dag_id VARCHAR(255) NOT NULL,
+    task_id VARCHAR(255) NOT NULL,
+    execution_date TIMESTAMP NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    duration_seconds INTEGER,
+    records_processed INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_etl_logs_execution ON etl_process_logs(execution_date);
+
+-- Функция обновления updated_at (для аналитической БД)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Триггер для daily_business_analytics
+DROP TRIGGER IF EXISTS update_analytics_updated_at ON daily_business_analytics;
 CREATE TRIGGER update_analytics_updated_at BEFORE UPDATE ON daily_business_analytics
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
+    FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
 -- Представление для быстрого доступа к последним метрикам
 CREATE OR REPLACE VIEW latest_analytics AS
@@ -107,7 +128,7 @@ SELECT
     SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_runs,
     SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_runs,
     AVG(duration_seconds) as avg_duration_seconds,
-    SUM(records_processed) as total_records_processed
+    COALESCE(SUM(records_processed), 0) as total_records_processed
 FROM etl_process_logs
 GROUP BY dag_id, task_id, DATE(execution_date)
 ORDER BY execution_day DESC;

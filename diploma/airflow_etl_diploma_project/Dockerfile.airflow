@@ -47,8 +47,7 @@ RUN pip install --no-cache-dir \
         apache-airflow-providers-http
     
 
-# Копирование исходного кода
-COPY config /opt/airflow/config/
+# Папка config монтируется из docker-compose или создана выше через RUN mkdir; копировать нечего
 
 # Опционально: предустановленные переменные окружения
 ENV AIRFLOW_HOME=/opt/airflow	\

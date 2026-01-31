@@ -1,5 +1,4 @@
-version: '3.8'
-
+# version убран: в новых Docker Compose атрибут version не используется
 services:
 
   # PostgreSQL Airflow Database

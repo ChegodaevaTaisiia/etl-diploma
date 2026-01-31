@@ -1,0 +1,84 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "postgres", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "10.0.0",
+      "targets": [{ "datasource": { "type": "postgres", "uid": "${datasource}" }, "editorMode": "code", "rawQuery": true, "rawSql": "SELECT SUM(total_revenue) AS total_revenue FROM daily_business_analytics WHERE analytics_date >= NOW() - INTERVAL '30 days';", "refId": "A" }],
+      "title": "Total Revenue (30 days)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "10.0.0",
+      "targets": [{ "datasource": { "type": "postgres", "uid": "${datasource}" }, "editorMode": "code", "rawQuery": true, "rawSql": "SELECT SUM(total_orders) AS total_orders FROM daily_business_analytics WHERE analytics_date >= NOW() - INTERVAL '30 days';", "refId": "A" }],
+      "title": "Total Orders (30 days)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "pluginVersion": "10.0.0",
+      "targets": [{ "datasource": { "type": "postgres", "uid": "${datasource}" }, "editorMode": "code", "rawQuery": true, "rawSql": "SELECT AVG(avg_order_value) AS avg_order_value FROM daily_business_analytics WHERE analytics_date >= NOW() - INTERVAL '30 days';", "refId": "A" }],
+      "title": "Avg Order Value (30 days)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "id": 4,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true } },
+      "targets": [{ "datasource": { "type": "postgres", "uid": "${datasource}" }, "editorMode": "code", "rawQuery": true, "rawSql": "SELECT analytics_date AS time, total_revenue, total_orders FROM daily_business_analytics WHERE analytics_date >= NOW() - INTERVAL '30 days' ORDER BY analytics_date;", "refId": "A" }],
+      "title": "Revenue & Orders trend",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["etl", "business-analytics"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Data source",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "postgres",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource",
+        "datasource": { "type": "postgres", "uid": "" }
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Business Analytics (ETL Diploma)",
+  "uid": "business-analytics-etl",
+  "version": 1,
+  "weekStart": ""
+}
