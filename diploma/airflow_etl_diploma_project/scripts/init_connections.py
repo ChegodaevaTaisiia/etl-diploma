@@ -133,7 +133,8 @@ def setup_all_connections():
         base_url = os.getenv('API_URL')
         api_key = os.getenv('API_KEY') or os.getenv('API_TOKEN')
         extra = _envToJson('API_EXTRA')
-        
+        if extra is None:
+            extra = {}
         # Добавляем API key в extra если есть
         if api_key:
             extra['api_key'] = api_key
