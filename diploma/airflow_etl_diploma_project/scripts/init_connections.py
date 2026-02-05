@@ -48,6 +48,14 @@ def create_connection(conn_id, conn_type, host, schema, login, password, port=No
     print(f"Connection '{conn_id}' created successfully")
 
 
+def _get_first_env(*names, default=None):
+    for name in names:
+        value = os.getenv(name)
+        if value not in (None, ''):
+            return value
+    return default
+
+
 def setup_all_connections():
     """Настройка всех подключений."""
     
@@ -62,7 +70,7 @@ def setup_all_connections():
             conn_id='postgres_source',
             conn_type='postgres',
             host=os.getenv('POSTGRES_SOURCE_HOST', 'postgres-source'),
-            schema=os.getenv('POSTGRES_SOURCE_DB', 'source_db'),
+            schema=_get_first_env('POSTGRES_SOURCE_DB', 'POSTGRES_SOURCE_DATABASE', default='source_db'),
             login=os.getenv('POSTGRES_SOURCE_USER', 'source_user'),
             password=os.getenv('POSTGRES_SOURCE_PASSWORD'),
             port=5432,
@@ -76,7 +84,7 @@ def setup_all_connections():
             conn_id='postgres_analytics',
             conn_type='postgres',
             host=os.getenv('POSTGRES_ANALYTICS_HOST', 'postgres-analytics'),
-            schema=os.getenv('POSTGRES_ANALYTICS_DB', 'analytics_db'),
+            schema=_get_first_env('POSTGRES_ANALYTICS_DB', 'POSTGRES_ANALYTICS_DATABASE', default='analytics_db'),
             login=os.getenv('POSTGRES_ANALYTICS_USER', 'analytics_user'),
             password=os.getenv('POSTGRES_ANALYTICS_PASSWORD'),
             port=5432,
